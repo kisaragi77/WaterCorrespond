@@ -355,6 +355,17 @@ public class SymbolGeneration {
     }
 
     public static short[] getCodedBits() {
+
+        /*
+            MODIFIED BY WXY TEST**********************************************************
+         */
+        if(CustomMessageTest.isStrTestEnabled()){
+            short[] customMessageBits = CustomMessageTest.getCodedBitsForCustomMessage();
+            if(customMessageBits != null){
+                return customMessageBits;
+            }
+        }
+
         String uncoded = Utils.pad2(Integer.toBinaryString(Constants.messageID));
         String coded = "";
         if (Constants.CODING) {

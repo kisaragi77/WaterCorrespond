@@ -1,6 +1,7 @@
 package com.example.root.ffttest2;
 
 import android.app.Activity;
+import android.util.Log;
 
 import com.example.root.ffttest2.R;
 
@@ -65,16 +66,23 @@ public class Decoder {
 
         // perform viterbi decoding
         String uncoded = Utils.decode(coded, Constants.cc[0],Constants.cc[1],Constants.cc[2]);
-
+        String finalMessage;
+        if(CustomMessageTest.isStrTestEnabled()){
+            String strMsg = CustomMessageTest.decodeBitsToString(uncoded);
+            if(strMsg.startsWith("Error")){
+                Log.e("Decoder", "Error on decoder: ");
+            }
+            finalMessage = strMsg;
+        }
+        else{
+            int messageID=Integer.parseInt(uncoded,2);
+            // display message
+            String message="Error";
+            if (Constants.mmap.containsKey(messageID)) { message = Constants.mmap.get(messageID); }
+            Utils.log(coded +"=>"+uncoded+"=>"+message);
+            finalMessage = message;
+        }
         // extract messageID from bits
-        int messageID=Integer.parseInt(uncoded,2);
-
-        // display message
-        String message="Error";
-        if (Constants.mmap.containsKey(messageID)) { message = Constants.mmap.get(messageID); }
-        Utils.log(coded +"=>"+uncoded+"=>"+message);
-
-        String finalMessage = message;
         av.runOnUiThread(new Runnable() {
             @Override
             public void run() {

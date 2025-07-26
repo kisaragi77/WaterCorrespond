@@ -70,8 +70,8 @@ public class SendChirpAsyncTask extends AsyncTask<Void, Void, Void> {
         }
 
         Constants.sp1=null;
-        Constants._OfflineRecorder = nuell;
-        Constants.user  = Constants.Usr.Bob;
+        Constants._OfflineRecorder = null;
+        Constants.user  = Constants.User.Bob;
         MainActivity.startMethod(av);
     }
 

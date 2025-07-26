@@ -178,6 +178,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Constants.spinner2 = (Spinner) findViewById(R.id.spinner2);
         Constants.spinner3 = (Spinner) findViewById(R.id.spinner3);
 
+
         ArrayList<String> arrayList = new ArrayList<>();
         arrayList.add("None");
         arrayList.add("1/2");
@@ -933,9 +934,40 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             iv25.setVisibility(View.GONE);
         }
 
-        iv1.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=1;startWrapper(); }});
-        iv2.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=2;startWrapper(); }});
-        iv3.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=3;startWrapper(); }});
+        /*
+            MODIFIED BY WXY TEST **************************************************************************************************************
+         */
+
+
+//        iv1.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=1;startWrapper(); }});
+
+        iv1.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view){
+                CustomMessageTest.prepareMessage("Hello,testv0.1");
+                startWrapper();
+            }
+        });
+
+        iv2.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view){
+                CustomMessageTest.prepareMessage("Bye,testv0.1");
+                startWrapper();
+            }
+        });
+
+        iv3.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view){
+                CustomMessageTest.switchStrTest();
+                String status = CustomMessageTest.isStrTestEnabled() ? "Enabled" : "Disabled";
+                Toast.makeText(MainActivity.this, "String Test Mode: " + status, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+//        iv2.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=2;startWrapper(); }});
+//        iv3.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=3;startWrapper(); }});
         iv4.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=4;startWrapper(); }});
         iv5.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=5;startWrapper(); }});
         iv6.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=6;startWrapper(); }});
@@ -978,6 +1010,12 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
                 }
             }
         });
+
+        //MODIFIED BY WXY
+        //*******************************************
+
+
+
     }
 
     @Override

@@ -4,9 +4,9 @@ import static org.junit.Assert.assertEquals;
 
 import org.junit.Test;
 
-class SignalProcessingTest {
+public class SignalProcessingTest {
     @Test
-    void work() {
+    public void work() {
         assertEquals(1,1);
     }
 }
