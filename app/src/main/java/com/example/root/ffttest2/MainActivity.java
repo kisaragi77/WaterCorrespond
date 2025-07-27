@@ -960,6 +960,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         iv3.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view){
+                Utils.debugLog("!Tap button 3");
                 CustomMessageTest.switchStrTest();
                 String status = CustomMessageTest.isStrTestEnabled() ? "Enabled" : "Disabled";
                 Toast.makeText(MainActivity.this, "String Test Mode: " + status, Toast.LENGTH_SHORT).show();

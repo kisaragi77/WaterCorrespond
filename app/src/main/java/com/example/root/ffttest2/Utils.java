@@ -16,8 +16,11 @@ import android.util.Log;
 
 import androidx.core.app.NotificationCompat;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Random;
 
 public class Utils {
@@ -58,7 +61,47 @@ public class Utils {
             }
         });
     }
+// 在 Utils.java 文件中
 
+    /**
+     * 【【【 新增的自定义调试日志方法 】】】
+     * 将一个字符串追加写入到 "debugLog.txt" 文件中。
+     * 这个文件会和项目原有的其他日志文件保存在同一个目录下。
+     *
+     * @param s 要写入的调试信息字符串。
+     */
+    public static void debugLog(String s) {
+        final String DEBUG_LOG_FILENAME = "MyDebugLog.txt";
+        if (MainActivity.av != null) {
+            long currentTimeMillis = System.currentTimeMillis();
+            Date currentDate = new Date(currentTimeMillis);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault());
+            String formattedTime = sdf.format(currentDate);
+            String logLine = String.format("[DEBUG]%s: %s\n", formattedTime, s);
+            FileOperations.appendtofile(MainActivity.av, logLine, DEBUG_LOG_FILENAME);
+        } else {
+            Log.e("DebugLog_Error", "MainActivity context is not available yet. Message: " + s);
+        }
+    }
+    public static void debugLog(String s,char mode){
+        final String DEBUG_LOG_FILENAME = "MyDebugLog.txt";
+        String logTypeStr = "DEBUG";
+        if(mode == 'I'){
+            logTypeStr = "INFO";
+        } else if(mode == 'E'){
+            logTypeStr = "ERROR";
+        }
+        if (MainActivity.av != null) {
+            long currentTimeMillis = System.currentTimeMillis();
+            Date currentDate = new Date(currentTimeMillis);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault());
+            String formattedTime = sdf.format(currentDate);
+            String logLine = String.format("[%s]%s: %s\n", logTypeStr ,formattedTime, s);
+            FileOperations.appendtofile(MainActivity.av, logLine, DEBUG_LOG_FILENAME);
+        } else {
+            Log.e("DebugLog_Error", "MainActivity context is not available yet. Message: " + s);
+        }
+    }
 //    public static boolean isSoundingSignal(Activity av, double[] rec) {
 //        long t1 = System.currentTimeMillis();
 //
