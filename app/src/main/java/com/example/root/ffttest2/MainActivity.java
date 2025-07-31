@@ -944,15 +944,16 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         iv1.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view){
-                CustomMessageTest.prepareMessage("Hello,testv0.1");
+                CustomMessageTest.prepareMessage("a");
                 startWrapper();
             }
         });
-
+//        0011010111000011101100000000000000
+//        0011010111000000111011000000
         iv2.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view){
-                CustomMessageTest.prepareMessage("Bye,testv0.1");
+                CustomMessageTest.prepareMessage("3");
                 startWrapper();
             }
         });

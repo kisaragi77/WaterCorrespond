@@ -887,4 +887,6 @@ extern "C" JNIEXPORT jdoubleArray JNICALL Java_com_example_root_ffttest2_Utils_b
     env->SetDoubleArrayRegion(out, 0, N, input);
 
     return out;
+
+
 }

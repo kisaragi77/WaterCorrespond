@@ -61,6 +61,9 @@ public class Utils {
             }
         });
     }
+//    public static String bytesToAcsii(String s){
+//
+//    }
 // 在 Utils.java 文件中
 
     /**
@@ -1184,4 +1187,6 @@ public class Utils {
     public static native double[][] dividenative(double[][] data1,double[][] data2);
     public static native double[] bandpass(double[] data);
     public static native double[] fir(double[] data, double[] h);
+
+//    public static native String mytestfunction();
 }

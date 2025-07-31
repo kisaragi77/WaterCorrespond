@@ -12,14 +12,14 @@ public class SymbolGeneration {
                                            int symreps, boolean preamble, Constants.SignalType sigType) {
         int numDataSyms = 0;
         if (valid_carrier.length > 0) {
-            numDataSyms = (int) Math.ceil((double)bits.length/valid_carrier.length);
+            numDataSyms = (int) Math.ceil((double) bits.length / valid_carrier.length);
         }
 
-        int symlen = (Constants.Ns+Constants.Cp)*symreps + Constants.Gi;
+        int symlen = (Constants.Ns + Constants.Cp) * symreps + Constants.Gi;
 
-        int siglen = symlen*numDataSyms;
+        int siglen = symlen * numDataSyms;
         if (preamble) {
-            siglen += ((Constants.preambleTime/1000.0)*Constants.fs)+Constants.ChirpGap;
+            siglen += ((Constants.preambleTime / 1000.0) * Constants.fs) + Constants.ChirpGap;
         }
         short[] txsig = new short[siglen];
 
@@ -36,15 +36,15 @@ public class SymbolGeneration {
         short[][] bit_list = new short[numDataSyms][valid_carrier.length];
         int bit_counter = 0;
         for (int i = 0; i < numDataSyms; i++) {
-            int endpoint = bit_counter + valid_carrier.length-1;
-            if (bit_counter + valid_carrier.length-1 > bits.length-1) {
-                endpoint = bits.length-1;
+            int endpoint = bit_counter + valid_carrier.length - 1;
+            if (bit_counter + valid_carrier.length - 1 > bits.length - 1) {
+                endpoint = bits.length - 1;
             }
             // segment data bits to add to symbol
-            short[] bits_seg = Utils.segment(bits,bit_counter,endpoint);
+            short[] bits_seg = Utils.segment(bits, bit_counter, endpoint);
             if (i > 0) {
                 // differential encoding
-                bits_seg = transform_bits(bit_list[i-1], bits_seg);
+                bits_seg = transform_bits(bit_list[i - 1], bits_seg);
             }
             bit_list[i] = bits_seg;
             // modulate bits into OFDM symbol
@@ -67,21 +67,21 @@ public class SymbolGeneration {
 
         String temp = "";
         for (int i = 0; i < Constants.maxbits; i++) {
-            temp+="0";
+            temp += "0";
         }
         int maxcodedbits = Constants.maxbits;
         if (Constants.CODING) {
-            maxcodedbits = Utils.encode(temp, Constants.cc[0],Constants.cc[1],Constants.cc[2]).length();
+            maxcodedbits = Utils.encode(temp, Constants.cc[0], Constants.cc[1], Constants.cc[2]).length();
         }
 
         short[] bits = new short[maxcodedbits];
 
         int bit_counter = 0;
         if (valid_carrier.length > 0) {
-            numrounds = (int) Math.ceil((double)maxcodedbits/valid_carrier.length);
+            numrounds = (int) Math.ceil((double) maxcodedbits / valid_carrier.length);
         }
-        int[] out = new int[numrounds+1];
-        out[0]=numrounds;
+        int[] out = new int[numrounds + 1];
+        out[0] = numrounds;
         for (int i = 0; i < numrounds; i++) {
             boolean oneMoreBin = i < bits.length % numrounds;
 
@@ -94,7 +94,7 @@ public class SymbolGeneration {
 
             short[] pad_bits = Utils.random_array(valid_carrier.length - bits_seg.length);
             Log.e("symbol", "sym " + i + ": " + bits_seg.length + "," + pad_bits.length);
-            out[i+1]=bits_seg.length;
+            out[i + 1] = bits_seg.length;
         }
         return out;
     }
@@ -104,15 +104,15 @@ public class SymbolGeneration {
                                               int m_attempt) {
         int numrounds = 0;
         if (valid_carrier.length > 0) {
-            numrounds = (int) Math.ceil((double)bits.length/valid_carrier.length);
+            numrounds = (int) Math.ceil((double) bits.length / valid_carrier.length);
         }
-        Log.e("sym",bits.length+","+valid_carrier.length+","+numrounds+","+Constants.Ns+","+Constants.subcarrier_number_default);
+        Log.e("sym", bits.length + "," + valid_carrier.length + "," + numrounds + "," + Constants.Ns + "," + Constants.subcarrier_number_default);
 
-        int symlen = (Constants.Ns+Constants.Cp)*symreps + Constants.Gi;
+        int symlen = (Constants.Ns + Constants.Cp) * symreps + Constants.Gi;
 
-        int siglen = symlen*(numrounds+1);
+        int siglen = symlen * (numrounds + 1);
         if (preamble) {
-            siglen += ((Constants.preambleTime/1000.0)*Constants.fs)+Constants.ChirpGap;
+            siglen += ((Constants.preambleTime / 1000.0) * Constants.fs) + Constants.ChirpGap;
         }
         short[] txsig = new short[siglen];
 
@@ -127,7 +127,7 @@ public class SymbolGeneration {
         }
 
         // add training symbol
-        short[][] bit_list = new short[numrounds+1][valid_carrier.length];
+        short[][] bit_list = new short[numrounds + 1][valid_carrier.length];
 
         short[] training_bits = Utils.segment(Constants.pn60_bits, 0, valid_carrier.length - 1);
 
@@ -143,31 +143,31 @@ public class SymbolGeneration {
 
         int bit_counter = 0;
         Log.e("symbol", sigType.toString());
-        Log.e("symbol", "# bits "+bits.length);
-        Log.e("symbol", "# carriers "+valid_carrier.length);
-        Log.e("symbol", "# symbols "+numrounds);
+        Log.e("symbol", "# bits " + bits.length);
+        Log.e("symbol", "# carriers " + valid_carrier.length);
+        Log.e("symbol", "# symbols " + numrounds);
 
         String bitsWithPadding = "";
         String bitsWithoutPadding = "";
         String numberOfDataBits = "";
 
         for (int i = 0; i < numrounds; i++) {
-            boolean oneMoreBin = i < bits.length%numrounds;
+            boolean oneMoreBin = i < bits.length % numrounds;
 
-            int endpoint = (int)(bit_counter + Math.floor(bits.length/numrounds));
+            int endpoint = (int) (bit_counter + Math.floor(bits.length / numrounds));
             if (!oneMoreBin) {
                 endpoint -= 1;
             }
 
-            short[] bits_seg = Utils.segment(bits,bit_counter,endpoint);
-            numberOfDataBits += bits_seg.length+", ";
-            bitsWithoutPadding += Utils.trim(Arrays.toString(bits_seg))+", ";
+            short[] bits_seg = Utils.segment(bits, bit_counter, endpoint);
+            numberOfDataBits += bits_seg.length + ", ";
+            bitsWithoutPadding += Utils.trim(Arrays.toString(bits_seg)) + ", ";
 
-            short[] pad_bits = Utils.random_array(valid_carrier.length-bits_seg.length);
-            Log.e("symbol", "sym "+i+": "+bits_seg.length+","+pad_bits.length);
+            short[] pad_bits = Utils.random_array(valid_carrier.length - bits_seg.length);
+            Log.e("symbol", "sym " + i + ": " + bits_seg.length + "," + pad_bits.length);
 
-            short[] tx_bits = Utils.concat_short(bits_seg,pad_bits);
-            bitsWithPadding += Utils.trim(Arrays.toString(tx_bits))+", ";
+            short[] tx_bits = Utils.concat_short(bits_seg, pad_bits);
+            bitsWithPadding += Utils.trim(Arrays.toString(tx_bits)) + ", ";
 
             if (Constants.INTERLEAVE) {
                 shuffleArray(tx_bits, i);
@@ -176,7 +176,7 @@ public class SymbolGeneration {
             if (Constants.DIFFERENTIAL) {
                 tx_bits = transform_bits(bit_list[i], tx_bits);
                 for (int j = 0; j < tx_bits.length; j++) {
-                    bit_list[i+1][j] = tx_bits[j];
+                    bit_list[i + 1][j] = tx_bits[j];
                 }
             }
 
@@ -215,9 +215,9 @@ public class SymbolGeneration {
     static short[] unshuffle(short[] ar, int seed) {
         short[] tempArray = new short[ar.length];
         for (int i = 0; i < tempArray.length; i++) {
-            tempArray[i] = (short)i;
+            tempArray[i] = (short) i;
         }
-        shuffleArray(tempArray,seed);
+        shuffleArray(tempArray, seed);
 
         short[] out = new short[ar.length];
         for (int i = 0; i < ar.length; i++) {
@@ -238,7 +238,7 @@ public class SymbolGeneration {
     }
 
     public static short[] transform_bits(short[] last_bits, short[] bits) {
-        short[] newbits= new short[bits.length];
+        short[] newbits = new short[bits.length];
         for (int i = 0; i < bits.length; i++) {
             if (last_bits[i] != bits[i]) {
                 newbits[i] = 1;
@@ -250,11 +250,11 @@ public class SymbolGeneration {
     public static short[] mod(int bound1, int bound2, int[] valid_carrier, short[] bits, int subnum, Constants.SignalType sigType) {
         double[][] mod = Modulation.pskmod(bits);
         if (bits.length < subnum) {
-            bound2 = bound1+bits.length-1;
+            bound2 = bound1 + bits.length - 1;
         }
 
         double[][] sig = new double[2][Constants.Ns];
-        int counter=0;
+        int counter = 0;
         for (int i = bound1; i <= bound2; i++) {
             if (contains(valid_carrier, i)) {
                 sig[0][i] = mod[0][counter];
@@ -265,12 +265,12 @@ public class SymbolGeneration {
         double[][] symbol_complex = Utils.ifftnative2(sig);
 
         short[] symbol = new short[symbol_complex[0].length];
-        double divval=(bound2-bound1)+1;
+        double divval = (bound2 - bound1) + 1;
         if (sigType.equals(Constants.SignalType.Sounding)) {
-            divval = divval/2;
+            divval = divval / 2;
         }
         for (int i = 0; i < symbol.length; i++) {
-            symbol[i] = (short)((symbol_complex[0][i]/(double)divval)*32767.0);
+            symbol[i] = (short) ((symbol_complex[0][i] / (double) divval) * 32767.0);
         }
 
         return symbol;
@@ -278,33 +278,34 @@ public class SymbolGeneration {
 
     // generate one symbol
     public static short[] generate_helper(short[] bits, int[] valid_carrier, int symreps, Constants.SignalType sigType) {
-        int bound1=0;
-        int bound2=0;
-        int subnum=0;
+        int bound1 = 0;
+        int bound2 = 0;
+        int subnum = 0;
         if (sigType.equals(Constants.SignalType.Sounding)) {
             bound1 = Constants.nbin1_default;
             bound2 = Constants.nbin2_default;
-            subnum=Constants.subcarrier_number_chanest;
-        }
-        else if (sigType.equals(Constants.SignalType.DataAdapt)||
-                sigType.equals(Constants.SignalType.DataFull_1000_4000)||
-                sigType.equals(Constants.SignalType.DataFull_1000_2500)||
+            subnum = Constants.subcarrier_number_chanest;
+        } else if (sigType.equals(Constants.SignalType.DataAdapt) ||
+                sigType.equals(Constants.SignalType.DataFull_1000_4000) ||
+                sigType.equals(Constants.SignalType.DataFull_1000_2500) ||
                 sigType.equals(Constants.SignalType.DataFull_1000_1500)) {
             bound1 = valid_carrier[0];
-            bound2 = valid_carrier[valid_carrier.length-1];
-            subnum = bound2-bound1+1;
+            bound2 = valid_carrier[valid_carrier.length - 1];
+            subnum = bound2 - bound1 + 1;
         }
 
         short[] symbol = mod(bound1, bound2, valid_carrier, bits, subnum, sigType);
-        short[] flipped_symbol=null;
-        if(Constants.FLIP_SYMBOL) {flipped_symbol = mod(bound1, bound2, valid_carrier, Utils.flip(bits), subnum, sigType);}
+        short[] flipped_symbol = null;
+        if (Constants.FLIP_SYMBOL) {
+            flipped_symbol = mod(bound1, bound2, valid_carrier, Utils.flip(bits), subnum, sigType);
+        }
 
         int datacounter = 0;
         short[] out = null;
 
-        if (sigType.equals(Constants.SignalType.DataAdapt)||
-                sigType.equals(Constants.SignalType.DataFull_1000_4000)||
-                sigType.equals(Constants.SignalType.DataFull_1000_2500)||
+        if (sigType.equals(Constants.SignalType.DataAdapt) ||
+                sigType.equals(Constants.SignalType.DataFull_1000_4000) ||
+                sigType.equals(Constants.SignalType.DataFull_1000_2500) ||
                 sigType.equals(Constants.SignalType.DataFull_1000_1500)) {
             int long_cp = Constants.Cp * symreps;
             short[] cp = new short[long_cp];
@@ -312,7 +313,7 @@ public class SymbolGeneration {
                 cp[i] = symbol[(symbol.length - long_cp - 1) + i];
             }
 
-            out = new short[symbol.length*symreps + long_cp + Constants.Gi];
+            out = new short[symbol.length * symreps + long_cp + Constants.Gi];
 
             for (int j = 0; j < cp.length; j++) {
                 out[datacounter++] = cp[j];
@@ -322,15 +323,14 @@ public class SymbolGeneration {
                     out[datacounter++] = symbol[j];
                 }
             }
-        }
-        else if (sigType.equals(Constants.SignalType.Sounding)) {
+        } else if (sigType.equals(Constants.SignalType.Sounding)) {
             int long_cp = Constants.Cp;
             short[] cp = new short[long_cp];
             for (int i = 0; i < long_cp; i++) {
                 cp[i] = symbol[(symbol.length - long_cp - 1) + i];
             }
 
-            out = new short[(symbol.length+long_cp)*symreps + Constants.Gi];
+            out = new short[(symbol.length + long_cp) * symreps + Constants.Gi];
 
             for (int i = 0; i < symreps; i++) {
                 for (int j = 0; j < cp.length; j++) {
@@ -347,34 +347,59 @@ public class SymbolGeneration {
 
     public static boolean contains(int[] data, int k) {
         for (Integer i : data) {
-            if (k==i) {
+            if (k == i) {
                 return true;
             }
         }
         return false;
     }
 
+//    public static short[] getCodedBits() {
+//
+//        /*
+//            MODIFIED BY WXY TEST**********************************************************
+//         */
+//        String uncoded = "";
+//        if (CustomMessageTest.isStrTestEnabled()) {
+//            uncoded = CustomMessageTest.getCodedBitsForCustomMessage();
+//            Utils.debugLog("custom uncode:" + uncoded);
+//        } else {
+//            uncoded = Utils.pad2(Integer.toBinaryString(Constants.messageID));
+//            Utils.debugLog("common uncode:" + uncoded);
+//        }
+//
+//        String coded = "";
+//        if (Constants.CODING) {
+//            coded = Utils.encode(uncoded, Constants.cc[0], Constants.cc[1], Constants.cc[2]);
+//        } else {
+//            coded = uncoded;
+//        }
+//        Utils.debugLog("coded" + coded);
+//        Utils.log(uncoded + "=>" + coded + "=>" + Constants.mmap.get(Constants.messageID));
+//        return Utils.convert(coded);
+//    }
+
     public static short[] getCodedBits() {
-
-        /*
-            MODIFIED BY WXY TEST**********************************************************
-         */
-        if(CustomMessageTest.isStrTestEnabled()){
-            short[] customMessageBits = CustomMessageTest.getCodedBitsForCustomMessage();
-            if(customMessageBits != null){
-                return customMessageBits;
-            }
+        String uncoded = "";
+        if (CustomMessageTest.isStrTestEnabled()) {
+            // 【修改点】现在调用 getOriginalBitsToEncode()
+            uncoded = CustomMessageTest.getOriginalBitsToEncode();
         }
-
-        String uncoded = Utils.pad2(Integer.toBinaryString(Constants.messageID));
+        if(uncoded ==null || uncoded.isEmpty()) {
+            if(uncoded == null) Utils.debugLog("Send Old msg");
+            if(uncoded.isEmpty()) Utils.debugLog("Send str null",'E');
+            uncoded = Utils.pad2(Integer.toBinaryString(Constants.messageID));
+        }
+        // 后续的FEC编码和转换逻辑对两种模式是通用的，保持不变
         String coded = "";
         if (Constants.CODING) {
-            coded = Utils.encode(uncoded, Constants.cc[0],Constants.cc[1],Constants.cc[2]);
-        }
-        else {
+            coded = Utils.encode(uncoded, Constants.cc[0], Constants.cc[1], Constants.cc[2]);
+        } else {
             coded = uncoded;
         }
-        Utils.log(uncoded +"=>"+coded+"=>"+Constants.mmap.get(Constants.messageID));
+        Utils.debugLog("Final uncoded string: " + uncoded);
+        Utils.debugLog("Final coded string: " + coded);
+
         return Utils.convert(coded);
     }
 }
