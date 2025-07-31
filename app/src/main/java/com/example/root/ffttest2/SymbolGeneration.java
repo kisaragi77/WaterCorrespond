@@ -99,26 +99,131 @@ public class SymbolGeneration {
         return out;
     }
 
+//    public static short[] generateDataSymbols(short[] bits, int[] valid_carrier,
+//                                              int symreps, boolean preamble, Constants.SignalType sigType,
+//                                              int m_attempt) {
+//        int numrounds = 0;
+//        if (valid_carrier.length > 0) {
+//            numrounds = (int) Math.ceil((double) bits.length / valid_carrier.length);
+//        }
+//        Log.e("sym", bits.length + "," + valid_carrier.length + "," + numrounds + "," + Constants.Ns + "," + Constants.subcarrier_number_default);
+//
+//        int symlen = (Constants.Ns + Constants.Cp) * symreps + Constants.Gi;
+//
+//        int siglen = symlen * (numrounds + 1);
+//        if (preamble) {
+//            siglen += ((Constants.preambleTime / 1000.0) * Constants.fs) + Constants.ChirpGap;
+//        }
+//        short[] txsig = new short[siglen];
+//
+//        int counter = 0;
+//        if (preamble) {
+//            // add preamble
+//            short[] preamble_sig = PreambleGen.preamble_s();
+//            for (Short s : preamble_sig) {
+//                txsig[counter++] = s;
+//            }
+//            counter += Constants.ChirpGap;
+//        }
+//
+//        // add training symbol
+//        short[][] bit_list = new short[numrounds + 1][valid_carrier.length];
+//
+//        short[] training_bits = Utils.segment(Constants.pn60_bits, 0, valid_carrier.length - 1);
+//
+//        short[] symbol = generate_helper(
+//                training_bits,
+//                valid_carrier,
+//                symreps,
+//                sigType);
+//        for (Short s : symbol) {
+//            txsig[counter++] = s;
+//        }
+//        bit_list[0] = training_bits;
+//
+//        int bit_counter = 0;
+//        Log.e("symbol", sigType.toString());
+//        Log.e("symbol", "# bits " + bits.length);
+//        Log.e("symbol", "# carriers " + valid_carrier.length);
+//        Log.e("symbol", "# symbols " + numrounds);
+//
+//        String bitsWithPadding = "";
+//        String bitsWithoutPadding = "";
+//        String numberOfDataBits = "";
+//
+//        for (int i = 0; i < numrounds; i++) {
+//            boolean oneMoreBin = i < bits.length % numrounds;
+//
+//            int endpoint = (int) (bit_counter + Math.floor(bits.length / numrounds));
+//            if (!oneMoreBin) {
+//                endpoint -= 1;
+//            }
+//
+//            short[] bits_seg = Utils.segment(bits, bit_counter, endpoint);
+//            numberOfDataBits += bits_seg.length + ", ";
+//            bitsWithoutPadding += Utils.trim(Arrays.toString(bits_seg)) + ", ";
+//
+//            short[] pad_bits = Utils.random_array(valid_carrier.length - bits_seg.length);
+//            Log.e("symbol", "sym " + i + ": " + bits_seg.length + "," + pad_bits.length);
+//
+//            short[] tx_bits = Utils.concat_short(bits_seg, pad_bits);
+//            bitsWithPadding += Utils.trim(Arrays.toString(tx_bits)) + ", ";
+//
+//            if (Constants.INTERLEAVE) {
+//                shuffleArray(tx_bits, i);
+//            }
+//
+//            if (Constants.DIFFERENTIAL) {
+//                tx_bits = transform_bits(bit_list[i], tx_bits);
+//                for (int j = 0; j < tx_bits.length; j++) {
+//                    bit_list[i + 1][j] = tx_bits[j];
+//                }
+//            }
+//
+//            symbol = generate_helper(
+//                    tx_bits,
+//                    valid_carrier,
+//                    symreps,
+//                    sigType);
+//            bit_counter += bits_seg.length;
+//
+//            for (Short s : symbol) {
+//                txsig[counter++] = s;
+//            }
+//        }
+//
+//        FileOperations.writetofile(MainActivity.av, Utils.trim_end(bitsWithPadding),
+//                Utils.genName(Constants.SignalType.BitsAdapt_Padding, m_attempt) + ".txt");
+//        FileOperations.writetofile(MainActivity.av, Utils.trim_end(bitsWithoutPadding),
+//                Utils.genName(Constants.SignalType.BitsAdapt, m_attempt) + ".txt");
+//        FileOperations.writetofile(MainActivity.av, Utils.trim_end(numberOfDataBits),
+//                Utils.genName(Constants.SignalType.Bit_Fill_Adapt, m_attempt) + ".txt");
+//
+//        return txsig;
+//    }
+// 在 SymbolGeneration.java 中
+
     public static short[] generateDataSymbols(short[] bits, int[] valid_carrier,
                                               int symreps, boolean preamble, Constants.SignalType sigType,
                                               int m_attempt) {
+        // 1. 计算需要多少个OFDM符号 (这部分逻辑不变，依然正确)
         int numrounds = 0;
         if (valid_carrier.length > 0) {
             numrounds = (int) Math.ceil((double) bits.length / valid_carrier.length);
         }
-        Log.e("sym", bits.length + "," + valid_carrier.length + "," + numrounds + "," + Constants.Ns + "," + Constants.subcarrier_number_default);
+        Log.e("sym", "Total bits: " + bits.length + ", Carriers/Symbol: " + valid_carrier.length + ", Symbols needed: " + numrounds);
 
+        // 2. 计算最终信号总长度 (这部分逻辑不变)
         int symlen = (Constants.Ns + Constants.Cp) * symreps + Constants.Gi;
-
-        int siglen = symlen * (numrounds + 1);
+        int siglen = symlen * (numrounds + 1); // +1 for the training symbol
         if (preamble) {
             siglen += ((Constants.preambleTime / 1000.0) * Constants.fs) + Constants.ChirpGap;
         }
         short[] txsig = new short[siglen];
-
         int counter = 0;
+
+        // 3. 添加前导码 (这部分逻辑不变)
         if (preamble) {
-            // add preamble
             short[] preamble_sig = PreambleGen.preamble_s();
             for (Short s : preamble_sig) {
                 txsig[counter++] = s;
@@ -126,82 +231,58 @@ public class SymbolGeneration {
             counter += Constants.ChirpGap;
         }
 
-        // add training symbol
+        // 4. 添加训练符号 (这部分逻辑不变)
         short[][] bit_list = new short[numrounds + 1][valid_carrier.length];
-
         short[] training_bits = Utils.segment(Constants.pn60_bits, 0, valid_carrier.length - 1);
-
-        short[] symbol = generate_helper(
-                training_bits,
-                valid_carrier,
-                symreps,
-                sigType);
+        short[] symbol = generate_helper(training_bits, valid_carrier, symreps, sigType);
         for (Short s : symbol) {
             txsig[counter++] = s;
         }
         bit_list[0] = training_bits;
 
+        // 5. 【【【 核心修改：采用“贪婪填充”逻辑 】】】
         int bit_counter = 0;
-        Log.e("symbol", sigType.toString());
-        Log.e("symbol", "# bits " + bits.length);
-        Log.e("symbol", "# carriers " + valid_carrier.length);
-        Log.e("symbol", "# symbols " + numrounds);
-
-        String bitsWithPadding = "";
-        String bitsWithoutPadding = "";
-        String numberOfDataBits = "";
-
         for (int i = 0; i < numrounds; i++) {
-            boolean oneMoreBin = i < bits.length % numrounds;
+            // a. 计算当前符号要承载的数据比特数
+            int remaining_bits = bits.length - bit_counter;
+            int bits_for_this_symbol = Math.min(valid_carrier.length, remaining_bits);
 
-            int endpoint = (int) (bit_counter + Math.floor(bits.length / numrounds));
-            if (!oneMoreBin) {
-                endpoint -= 1;
-            }
+            // b. 从总比特流中切出这一段数据
+            short[] bits_seg = Utils.segment(bits, bit_counter, bit_counter + bits_for_this_symbol - 1);
 
-            short[] bits_seg = Utils.segment(bits, bit_counter, endpoint);
-            numberOfDataBits += bits_seg.length + ", ";
-            bitsWithoutPadding += Utils.trim(Arrays.toString(bits_seg)) + ", ";
-
+            // c. 如果数据不够填满，用随机比特填充剩余部分
             short[] pad_bits = Utils.random_array(valid_carrier.length - bits_seg.length);
-            Log.e("symbol", "sym " + i + ": " + bits_seg.length + "," + pad_bits.length);
-
             short[] tx_bits = Utils.concat_short(bits_seg, pad_bits);
-            bitsWithPadding += Utils.trim(Arrays.toString(tx_bits)) + ", ";
 
+            Utils.debugLog("Symbol " + i + ": Data bits=" + bits_seg.length + ", Padding bits=" + pad_bits.length);
+
+            // d. 后续的交织、差分编码和符号生成逻辑保持不变
             if (Constants.INTERLEAVE) {
                 shuffleArray(tx_bits, i);
             }
-
             if (Constants.DIFFERENTIAL) {
-                tx_bits = transform_bits(bit_list[i], tx_bits);
-                for (int j = 0; j < tx_bits.length; j++) {
-                    bit_list[i + 1][j] = tx_bits[j];
-                }
+                // 注意：差分编码的参考符号应该是上一个完整的OFDM符号，而不是上一个数据段
+                tx_bits = transform_bits(bit_list[i], tx_bits); // 使用 bit_list[i] (即上一个符号的tx_bits)
+                bit_list[i + 1] = tx_bits; // 保存当前完整的tx_bits以供下一个符号参考
             }
 
-            symbol = generate_helper(
-                    tx_bits,
-                    valid_carrier,
-                    symreps,
-                    sigType);
-            bit_counter += bits_seg.length;
+            symbol = generate_helper(tx_bits, valid_carrier, symreps, sigType);
 
+            // e. 更新已处理的数据比特计数器
+            bit_counter += bits_for_this_symbol;
+
+            // f. 将生成的符号追加到最终信号中
             for (Short s : symbol) {
                 txsig[counter++] = s;
             }
         }
 
-        FileOperations.writetofile(MainActivity.av, Utils.trim_end(bitsWithPadding),
-                Utils.genName(Constants.SignalType.BitsAdapt_Padding, m_attempt) + ".txt");
-        FileOperations.writetofile(MainActivity.av, Utils.trim_end(bitsWithoutPadding),
-                Utils.genName(Constants.SignalType.BitsAdapt, m_attempt) + ".txt");
-        FileOperations.writetofile(MainActivity.av, Utils.trim_end(numberOfDataBits),
-                Utils.genName(Constants.SignalType.Bit_Fill_Adapt, m_attempt) + ".txt");
+        // 文件记录部分可以简化或保持不变
+        // FileOperations.writetofile(...);
+
 
         return txsig;
     }
-
     static void shuffleArray(short[] ar, int seed) {
         Random rnd = new Random(seed);
         for (int i = ar.length - 1; i > 0; i--) {

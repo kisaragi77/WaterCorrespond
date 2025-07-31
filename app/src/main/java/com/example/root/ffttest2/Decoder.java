@@ -5,6 +5,8 @@ import android.util.Log;
 
 import com.example.root.ffttest2.R;
 
+import java.util.Collections;
+
 public class Decoder {
 //    public static void decode_helper(Activity av, double[] data, int[] valid_bins) {
 //         data = Utils.filter(data);
@@ -121,78 +123,69 @@ public class Decoder {
         // 2. 【【【 核心修改：动态解包逻辑 】】】
         String finalMessage;
         if (CustomMessageTest.isStrTestEnabled()) {
-            // --- 新的、针对可变长度字符串的逻辑 ---
-            Utils.debugLog("Decoder entering STRING mode.");
+            // --- 新的、基于“贪婪拆箱”的字符串逻辑 ---
+            Utils.debugLog("Decoder entering STRING mode (Greedy Strategy).");
 
             final int HEADER_LENGTH_BITS = 16;
             String fullCodedBits = "";
-            String fullUncodedBits = "";
-
-            // a. 先解码出包含信头的“第一批”比特
-            // 我们需要先解码出足够多的比特来解析信头。一个OFDM符号承载 valid_carrier_range.length 个比特。
-            // 假设FEC码率为1/2，约束长度为7，那么编码后的信头长度约为 (16 + 7-1) * 2 = 44比特。
-            // 通常解码1-2个OFDM符号就足够了。这里我们用一个循环来确保这一点。
-            int symbolsProcessed = 0;
             int expectedUncodedLength = -1;
-            int totalSymbolsNeeded = -1;
+            int expectedCodedLength = -1;
 
-            double[][][] symbols_so_far = new double[2][][]; // [0] for previous, [1] for current
+            double[][][] symbols_so_far = new double[2][][];
             symbols_so_far[1] = recovered_pilot_sym;
 
-            while(true) {
-                symbols_so_far[0] = symbols_so_far[1]; // Shift current to previous
+            while (true) {
+                symbols_so_far[0] = symbols_so_far[1];
 
-                // 检查是否还有足够的数据来切片下一个符号
                 if (start + Constants.Cp + Constants.Ns - 1 >= data.length) {
-                    Utils.debugLog("Decoder Error: Ran out of data before decoding could complete.");
-                    finalMessage = "Error: Incomplete packet.";
+                    Utils.debugLog("Decoder Warning: Ran out of data. Decoding with what was received.");
                     break;
                 }
 
-                // b. 提取、均衡下一个OFDM符号
                 double[] sym = Utils.segment(data, start + Constants.Cp, start + Constants.Cp + Constants.Ns - 1);
                 start = start + Constants.Cp + Constants.Ns;
                 double[][] sym_spec = Utils.fftcomplexoutnative_double(sym, sym.length);
                 symbols_so_far[1] = Utils.timesnative(sym_spec, weights);
-                symbolsProcessed++;
 
-                // c. 差分解调这两个连续的符号
                 short[][] demodulatedBits = Modulation.pskdemod_differential(symbols_so_far, valid_bins);
+                short[] unshuffledBits = SymbolGeneration.unshuffle(demodulatedBits[0], fullCodedBits.length() / valid_carrier_range.length);
 
-                // d. 反交织并拼接
-                short[] unshuffledBits = SymbolGeneration.unshuffle(demodulatedBits[0], symbolsProcessed - 1);
+                // 【【【 核心修改：贪婪拼接 】】】
+                // 每次都将解调出的一个完整符号的比特全部拼接起来
                 for (short bit : unshuffledBits) {
                     fullCodedBits += bit;
                 }
 
-                // e. 尝试解码，看是否能解析出信头
+                // 检查是否可以解码信头了
                 if (expectedUncodedLength == -1) {
-                    String decodedSoFar = Utils.decode(fullCodedBits, Constants.cc[0], Constants.cc[1], Constants.cc[2]);
-                    if (decodedSoFar.length() >= HEADER_LENGTH_BITS) {
-                        // 成功解码出信头！
-                        String headerBits = decodedSoFar.substring(0, HEADER_LENGTH_BITS);
-                        expectedUncodedLength = Integer.parseInt(headerBits, 2) + HEADER_LENGTH_BITS;
-                        Utils.debugLog("Header decoded! Expected uncoded length (header+payload): " + expectedUncodedLength);
+                    String decodedHeaderAttempt = Utils.decode(fullCodedBits, Constants.cc[0], Constants.cc[1], Constants.cc[2]);
+                    if (decodedHeaderAttempt.length() >= HEADER_LENGTH_BITS) {
+                        String headerBits = decodedHeaderAttempt.substring(0, HEADER_LENGTH_BITS);
+                        int payloadLength = Integer.parseInt(headerBits, 2);
+                        expectedUncodedLength = HEADER_LENGTH_BITS + payloadLength;
 
-                        // 计算总共需要多少个OFDM符号
-                        // (这里是一个估算，实际可能因FEC和填充而略有不同，但足够健壮)
-                        int bitsPerSymbol = valid_carrier_range.length;
-                        double approxCodingRate = 0.5; // 假设码率
-                        int approxCodedLength = (int)(expectedUncodedLength / approxCodingRate);
-                        totalSymbolsNeeded = (int) Math.ceil((double) approxCodedLength / bitsPerSymbol);
-                        Utils.debugLog("Estimated total symbols needed: " + totalSymbolsNeeded);
+                        // 【重要】精确计算编码后的总长度
+                        // 编码器会添加 (constraint-1) 个冲刷比特
+                        int constraint = Constants.cc[2];
+                        String tempUncoded = String.join("", Collections.nCopies(expectedUncodedLength, "0"));
+                        expectedCodedLength = Utils.encode(tempUncoded, Constants.cc[0], Constants.cc[1], constraint).length();
+
+                        Utils.debugLog("Header decoded! Payload length: " + payloadLength + ", Full uncoded length: " + expectedUncodedLength);
+                        Utils.debugLog("Expected final coded length: " + expectedCodedLength);
                     }
                 }
 
-                // f. 检查是否已处理完所有需要的符号
-                if (totalSymbolsNeeded != -1 && symbolsProcessed >= totalSymbolsNeeded) {
-                    // 所有符号都已处理完毕
-                    fullUncodedBits = Utils.decode(fullCodedBits, Constants.cc[0], Constants.cc[1], Constants.cc[2]);
-                    Utils.debugLog("Full uncoded bits received: " + fullUncodedBits);
-                    finalMessage = CustomMessageTest.decodeBitsToString(fullUncodedBits);
-                    break;
+                // 检查是否已接收到足够的编码比特
+                if (expectedCodedLength != -1 && fullCodedBits.length() >= expectedCodedLength) {
+                    Utils.debugLog("Received enough coded bits (" + fullCodedBits.length() + "). Finalizing decoding.");
+                    break; // 跳出循环，进行最终解码
                 }
             }
+
+            // 进行最终的Viterbi解码和字符串翻译
+            String fullUncodedBits = Utils.decode(fullCodedBits, Constants.cc[0], Constants.cc[1], Constants.cc[2]);
+            Utils.debugLog("Full uncoded bits received: " + fullUncodedBits);
+            finalMessage = CustomMessageTest.decodeBitsToString(fullUncodedBits);
 
         } else {
             // --- 旧的、针对固定长度ID的逻辑 (保持不变) ---
