@@ -61,7 +61,19 @@ public class SendChirpAsyncTask extends AsyncTask<Void, Void, Void> {
     @Override
     protected void onPostExecute(Void unused) {
         super.onPostExecute(unused);
+        if (Experiment.isExperimentRunning) {
+            // 如果是，就触发下一个数据包的发送
+            // 我们给一个短暂的延迟，让系统有时间喘息
+            new android.os.Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    Experiment.triggerNextPacket();
+                }
+            }, 300); // 延迟500毫秒
 
+            // 直接返回，不执行下面的重启逻辑，因为下一个任务将由Experiment类启动
+            return;
+        }
         MainActivity.unreg(av);
 
         if (Constants.timer!=null) {
@@ -141,6 +153,71 @@ public class SendChirpAsyncTask extends AsyncTask<Void, Void, Void> {
             }
         });
     }
+// 在 SendChirpAsyncTask.java 中
+
+    // ====================================================================
+// 【【【 替换旧的 work 方法 】】】
+// ====================================================================
+//    public int work(int m_attempt) {
+//        // 根据 Experiment 类中的当前模式，进行逻辑分发
+//        if (Experiment.currentBandwidthMode == Experiment.BandwidthMode.ADAPTIVE) {
+//            // 如果是自适应模式，调用自适应协议的实现
+//            return work_adaptive(m_attempt);
+//        } else {
+//            // 如果是固定带宽模式，调用固定带宽协议的实现
+//            return work_fixed(m_attempt);
+//        }
+//    }
+
+    // 在 SendChirpAsyncTask.java 中，可以放在 work_adaptive 方法下面
+
+//// ====================================================================
+//// 【【【 新增 work_fixed 方法 】】】
+//// ====================================================================
+//    /**
+//     * 执行新的、用于固定带宽传输的简化协议。
+//     * @param m_attempt 当前的测量尝试次数
+//     * @return 状态码，0表示成功
+//     */
+//    private int work_fixed(int m_attempt) {
+//        if (Constants.user.equals(Constants.User.Alice)) {
+//            // --- Alice的简化逻辑：直接发送 ---
+//            Utils.debugLog("FIXED MODE: Alice sending data with " + Experiment.fixedBandwidthHz + " Hz bandwidth.");
+//
+//            // 1. 根据 Experiment.fixedBandwidthHz 计算出固定的子载波索引
+//            int start_freq = 1000; // 起始频率固定为1kHz
+//            int end_freq = start_freq + Experiment.fixedBandwidthHz;
+//
+//            int inc = Constants.fs / Constants.Ns;
+//            int start_bin = start_freq / inc;
+//            int end_bin = end_freq / inc;
+//            int[] fixed_bins = Utils.arange(start_bin, end_bin);
+//
+//            // 2. 直接调用 sendData 发送数据，不进行探测和等待
+//            sendData(fixed_bins, m_attempt);
+//
+//            // 简单等待一段时间以完成一个通信周期
+//            sleep(5000);
+//
+//        } else if (Constants.user.equals(Constants.User.Bob)) {
+//            // --- Bob的简化逻辑：直接接收 ---
+//            Utils.debugLog("FIXED MODE: Bob waiting for data.");
+//
+//            // 1. 直接等待数据信号 (DataRx)，跳过探测和反馈
+//            double[] data_signal = Utils.waitForChirp(Constants.SignalType.DataRx, m_attempt, 0);
+//
+//            if (data_signal != null) {
+//                // 2. 解码时，Bob不知道Alice具体用了哪个固定带宽。
+//                //    一个健壮的做法是让Bob总是假设一个最大的可能范围，
+//                //    因为解码器中的训练符号均衡可以处理未被使用的子载波(能量为0)。
+//                int inc = Constants.fs / Constants.Ns;
+//                int[] max_possible_bins = Utils.arange(1000 / inc, 4000 / inc);
+//
+//                Decoder.decode_helper(av, data_signal, max_possible_bins);
+//            }
+//        }
+//        return 0;
+//    }
 
     public int work(int m_attempt) {
         double[] tx_preamble = PreambleGen.preamble_d();

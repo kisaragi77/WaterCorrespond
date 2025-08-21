@@ -102,6 +102,26 @@ public class Utils {
             Log.e("DebugLog_Error", "MainActivity context is not available yet. Message: " + s);
         }
     }
+    public static void debugLog(String s,char mode,String filename){
+        final String DEBUG_LOG_FILENAME = filename;
+        String logTypeStr = "DEBUG";
+        if(mode == 'I'){
+            logTypeStr = "INFO";
+        } else if(mode == 'E'){
+            logTypeStr = "ERROR";
+        }
+        if (MainActivity.av != null) {
+            long currentTimeMillis = System.currentTimeMillis();
+            Date currentDate = new Date(currentTimeMillis);
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault());
+            String formattedTime = sdf.format(currentDate);
+            String logLine = String.format("[%s]%s: %s\n", logTypeStr ,formattedTime, s);
+            FileOperations.appendtofile(MainActivity.av, logLine, DEBUG_LOG_FILENAME);
+        } else {
+            Log.e("DebugLog_Error", "MainActivity context is not available yet. Message: " + s);
+        }
+    }
+
 //    public static boolean isSoundingSignal(Activity av, double[] rec) {
 //        long t1 = System.currentTimeMillis();
 //
@@ -894,7 +914,7 @@ public class Utils {
                         double[] xcorr_out = Utils.xcorr_online(tx_preamble, filt);
 
                         long t1 = System.currentTimeMillis();
-                        Utils.log(String.format("Listening... (%.2f)",xcorr_out[2]));
+//                        Utils.log(String.format("Listening... (%.2f)",xcorr_out[2]));
 
                         sampleHistory.add(rec);
                         valueHistory.add(xcorr_out[0]);

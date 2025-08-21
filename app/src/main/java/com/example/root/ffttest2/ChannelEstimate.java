@@ -68,7 +68,27 @@ public class ChannelEstimate {
         int[] freqs = new int[]{-1,-1};
         int[] selected = null;
         selected = Fre_adaptation.select_fre_bins(snrs, thresh);
+        if (Experiment.currentBandwidthMode == Experiment.BandwidthMode.FIXED) {
+            // 如果当前是固定带宽模式
+            Utils.debugLog("ChannelEstimate: FIXED mode detected. Overriding adaptive selection.");
 
+            // 1. 直接从全局变量读取用户在et6/et7中设定的频率
+            int start_freq = Experiment.fixedBandwidthHz;
+            int end_freq = Experiment.fixedBandwidthHz;
+
+            // 2. 将频率转换成子载波索引
+            int inc = Constants.fs / Constants.Ns;
+            int start_bin = start_freq / inc;
+            int end_bin = end_freq / inc;
+
+            // 3. 创建一个新的结果数组，用我们强制指定的值覆盖掉自适应算法的结果
+            int[] fixed_selection = new int[]{start_bin, end_bin};
+
+            Utils.debugLog("ChannelEstimate: Forcing selection to bins: " + start_bin + " - " + end_bin);
+            Experiment.fixedBandwidthHz = start_bin;
+            // 4. 返回这个被我们“篡改”过的结果
+            return fixed_selection;
+        }
         if (selected.length==2&&selected[0] != -1 && selected[1] != -1) {
             if (selected[1]-selected[0]==1) {
                 if (selected[0] > 0) {

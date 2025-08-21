@@ -24,6 +24,8 @@ import java.util.LinkedList;
 import java.util.Random;
 
 public class Constants {
+
+
     public enum EqMethod {
         Freq,
         Time
@@ -137,7 +139,9 @@ public class Constants {
     public static int exp_num=5;
     public static int SNR_THRESH = 10; //unused
     public static Spinner spinner,spinner2,spinner3;
-    public static CodeRate codeRate = CodeRate.None;
+    public static CodeRate codeRate = CodeRate.C1_2;
+
+    public static double codeRateFloat = 0.5;
     public static int DATA_LEN = 32;
     public static int mattempts=1;
     public static long ts;

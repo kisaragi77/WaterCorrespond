@@ -63,6 +63,22 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     static Activity av;
     static boolean started=false;
 
+    public static void showToast(final String message) {
+        // 检查静态的Activity引用是否存在，防止在Activity销毁后调用导致崩溃
+        if (av == null) {
+            // 如果Activity不存在，就在Logcat中打印一条错误
+            Log.e("MainActivity_Toast", "Cannot show Toast, Activity context is null. Message: " + message);
+            Utils.debugLog("av is null",'E');
+            return;
+        }
+        av.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                Toast.makeText(av, message, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -269,8 +285,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Constants.et3 = (EditText) findViewById(R.id.editTextNumber3);
         Constants.et4 = (EditText) findViewById(R.id.editTextNumber4);
         Constants.et5 = (EditText) findViewById(R.id.editTextNumber5);
+        //
         Constants.et6 = (EditText) findViewById(R.id.editTextNumber6);
         Constants.et7 = (EditText) findViewById(R.id.editTextNumber7);
+        //
         Constants.et8 = (EditText) findViewById(R.id.editTextNumber8);
         Constants.et9 = (EditText) findViewById(R.id.editTextNumber9);
         Constants.et10 = (EditText) findViewById(R.id.editTextNumber10);
@@ -291,8 +309,10 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Constants.tv4 = (TextView) findViewById(R.id.textView4);
         Constants.tv5 = (TextView) findViewById(R.id.textView5);
         Constants.debugPane = (TextView) findViewById(R.id.debugPane);
+        //
         Constants.tv7 = (TextView) findViewById(R.id.textView7);
         Constants.tv8 = (TextView) findViewById(R.id.textView8);
+        //
         Constants.tv9 = (TextView) findViewById(R.id.textView9);
         Constants.tv10 = (TextView) findViewById(R.id.textView10);
         Constants.tv13 = (TextView) findViewById(R.id.textView13);
@@ -314,8 +334,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Constants.tv6 = (TextView) findViewById(R.id.textView6);
         av = this;
 
-        Constants.sw2.setVisibility(View.GONE);
-        Constants.sw3.setVisibility(View.GONE);
+//        Constants.sw2.setVisibility(View.GONE);
+//        Constants.sw3.setVisibility(View.GONE);
         Constants.sw4.setVisibility(View.GONE);
         Constants.sw5.setVisibility(View.GONE);
         Constants.sw6.setVisibility(View.GONE);
@@ -326,9 +346,9 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Constants.et2.setVisibility(View.GONE);
 //        Constants.et4.setVisibility(View.GONE);
         Constants.et5.setVisibility(View.GONE);
-        Constants.et6.setVisibility(View.GONE);
-        Constants.et7.setVisibility(View.GONE);
-        Constants.et8.setVisibility(View.GONE);
+//        Constants.et6.setVisibility(View.GONE);
+//        Constants.et7.setVisibility(View.GONE);
+//        Constants.et8.setVisibility(View.GONE);
         Constants.et11.setVisibility(View.GONE);
 //        Constants.et13.setVisibility(View.GONE);
         Constants.et14.setVisibility(View.GONE);
@@ -339,8 +359,8 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         Constants.tv2.setVisibility(View.GONE);
 //        Constants.tv5.setVisibility(View.GONE);
         Constants.tv7.setVisibility(View.GONE);
-        Constants.tv8.setVisibility(View.GONE);
-        Constants.tv9.setVisibility(View.GONE);
+//        Constants.tv8.setVisibility(View.GONE);
+//        Constants.tv9.setVisibility(View.GONE);
         Constants.tv10.setVisibility(View.GONE);
         Constants.tv13.setVisibility(View.GONE);
 //        Constants.tv14.setVisibility(View.GONE);
@@ -944,14 +964,24 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         iv1.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view){
-                startWrapper();
+                if (Experiment.isExperimentRunning) {
+                    // 如果实验正在进行，这个按钮的功能就是“停止实验”
+                    Experiment.isExperimentRunning = false; // 通过设置标志位来停止
+                    MainActivity.showToast("Experiment stopped by user.");
+                    Utils.debugLog("Experiment run manually stopped.");
+
+                } else {
+                    Experiment.startExperimentRun();
+                }
             }
         });
 
         iv2.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view){
-                startWrapper();
+                Experiment.onExperiment = !Experiment.onExperiment;
+                Experiment.resetStats();
+                showToast("Experiment Mode " + ((Experiment.onExperiment)?"On":"Off"));
             }
         });
 
@@ -959,12 +989,29 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View view){
                 Utils.debugLog("!Tap button 3");
+                Experiment.switchBandwidthMode();
+                if (Experiment.currentBandwidthMode == Experiment.BandwidthMode.ADAPTIVE) {
+//                    Constants.et6.setVisibility(View.GONE);
+//                    Constants.et7.setVisibility(View.GONE);
+                    showToast("Mode switched to: Adaptive");
+                } else {
+//                    Constants.et6.setVisibility(View.VISIBLE);
+//                    Constants.et7.setVisibility(View.VISIBLE);
+                    showToast("Mode switched to: Fixed (Custom Bandwidth)");
+                }
+            }
+        });
+
+        iv4.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view){
+                Experiment.printData();
             }
         });
 
 //        iv2.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=2;startWrapper(); }});
 //        iv3.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=3;startWrapper(); }});
-        iv4.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=4;startWrapper(); }});
+//        iv4.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=4;startWrapper(); }});
         iv5.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=5;startWrapper(); }});
         iv6.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=6;startWrapper(); }});
         iv7.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=7;startWrapper(); }});

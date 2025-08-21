@@ -66,18 +66,53 @@ public class Decoder {
 
         // perform viterbi decoding
         String uncoded = Utils.decode(coded, Constants.cc[0],Constants.cc[1],Constants.cc[2]);
+        boolean isSuccess = false;
+        if(Experiment.onExperiment || Experiment.isExperimentRunning){
+            String expectedUncodedBits = Utils.pad2(Integer.toBinaryString(Experiment.EXPECTED_MESSAGE_ID));
+            isSuccess = uncoded.equals(expectedUncodedBits);
+            double bitrateBps = 0;
+                // 比特率由Bob估计出的、并由Alice最终使用的valid_bins的宽度决定
+            int num_carriers = valid_bins[1] - valid_bins[0] + 1; // 注意：这里的valid_bins是Bob估计出的相对索引
+            if(Experiment.currentBandwidthMode == Experiment.BandwidthMode.FIXED){
+                int start_freq = Constants.f_range[0];
+                int end_freq = start_freq + Experiment.fixedBandwidthHz;
+                double inc = (double)Constants.fs / Constants.Ns;
+                int start_bin = (int)Math.round(start_freq / inc);
+                int end_bin = (int)Math.round(end_freq / inc);
+                num_carriers = (int)Math.round(end_freq / inc) -  (int)Math.round(start_freq / inc);
+            }
+            double symbols_per_second = (double)Constants.fs / (Constants.Ns + Constants.Cp);
+            double uncoded_bitrate_bps = num_carriers * symbols_per_second;
+            // 码率目前是1/2
+            bitrateBps = uncoded_bitrate_bps / Constants.codeRateFloat;
+            Experiment.recordPacketResult(isSuccess, bitrateBps);
+
+            Utils.debugLog(String.format("Packet Decode Result: %s. Mode: %s. Bitrate(if adaptive): %.2f",
+                    isSuccess ? "SUCCESS" : "FAIL",
+                    Experiment.currentBandwidthMode.toString(),
+                    bitrateBps));
+
+            MainActivity.showToast(String.format("Packet Decode Result: %s. Mode: %s. Bitrate(if adaptive): %.2f",
+                    isSuccess ? "SUCCESS" : "FAIL",
+                    Experiment.currentBandwidthMode.toString(),
+                    bitrateBps));
+        }
+
         String finalMessage;
         int messageID=Integer.parseInt(uncoded,2);
         // display message
         String message="Error";
-        if (Constants.mmap.containsKey(messageID)) { message = Constants.mmap.get(messageID); }
+        if(Experiment.onExperiment && isSuccess){
+            message = Constants.mmap.get(Experiment.EXPECTED_MESSAGE_ID) + " " +Experiment.totalPackets;
+        }
+        else if (Constants.mmap.containsKey(messageID)) { message = Constants.mmap.get(messageID); }
         Utils.log(coded +"=>"+uncoded+"=>"+message);
         finalMessage = message;
         // extract messageID from bits
         av.runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                Utils.sendNotification(av, "Notification",finalMessage, com.example.root.ffttest2.R.drawable.warning2);
+                Utils.sendNotification(av, "Notification",finalMessage, R.drawable.warning2);
                 Constants.msgview.setText(finalMessage);
             }
         });

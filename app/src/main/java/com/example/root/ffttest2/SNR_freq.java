@@ -2,7 +2,9 @@ package com.example.root.ffttest2;
 
 public class SNR_freq {
     public static double[] calculate_snr(double[][][] rx_spectrum, double[][] gt_symbol, int sym_start, int sym_end) {
-        int bin_num = gt_symbol.length;
+        int rx_bin_num = rx_spectrum[0].length;
+        int gt_bin_num = gt_symbol.length;
+        int bin_num = Math.min(rx_bin_num, gt_bin_num);
         double[] SNR_list = new double[bin_num];
         int sym_count = sym_end-sym_start;
 
