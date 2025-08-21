@@ -944,7 +944,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         iv1.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view){
-                CustomMessageTest.prepareMessage("Hello,testv0.1");
                 startWrapper();
             }
         });
@@ -952,7 +951,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         iv2.setOnClickListener(new View.OnClickListener(){
             @Override
             public void onClick(View view){
-                CustomMessageTest.prepareMessage("Bye,testv0.1");
                 startWrapper();
             }
         });
@@ -961,9 +959,6 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             @Override
             public void onClick(View view){
                 Utils.debugLog("!Tap button 3");
-                CustomMessageTest.switchStrTest();
-                String status = CustomMessageTest.isStrTestEnabled() ? "Enabled" : "Disabled";
-                Toast.makeText(MainActivity.this, "String Test Mode: " + status, Toast.LENGTH_SHORT).show();
             }
         });
 
