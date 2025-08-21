@@ -1,5 +1,8 @@
 package com.example.root.ffttest2;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,7 +20,9 @@ public class Experiment {
     public static String FLAG_MSG = "Test";
     public static boolean isExperimentRunning = false; // 标志位，表示“百次实验”是否正在进行
     public static int packetsSentCount = 0;           // 当前已发送的数据包计数器
-    public static final int TOTAL_PACKETS_TO_SEND = 5; // 目标发送总数
+    public static int TOTAL_PACKETS_TO_SEND = 5; // 目标发送总数
+
+    public static int sleepTime = 0;
 
     // --- 模式定义部分 (保持不变) ---
     public enum BandwidthMode {
@@ -79,9 +84,6 @@ public class Experiment {
      * 【生成报告并打印】
      * 在日志中打印出当前所有模式的统计总结。
      */
-    public static void printStatsReport() {
-
-    }
 
     /**
      * 【重置所有统计数据】
@@ -129,9 +131,20 @@ public class Experiment {
         isExperimentRunning = true;
         packetsSentCount = 0;
         resetStats(); // 开始新实验前，清空旧的统计数据
-
-        // 启动第一个数据包的发送流程
-        triggerNextPacket();
+        MainActivity.showToast("Experiment will start in " + sleepTime + " seconds...");
+        //TODO:延迟sleepTime秒再发送第一个数据包
+        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                if (isExperimentRunning) {
+                    // 延迟结束后，正式触发第一个数据包的发送
+                    triggerNextPacket();
+                } else {
+                    Utils.debugLog("Experiment was cancelled during the initial delay.");
+                }
+            }
+        }, sleepTime * 1000L); // 第二个参数是毫秒，所以需要乘以1000
+//        triggerNextPacket();
     }
 
     /**

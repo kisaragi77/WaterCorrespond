@@ -1009,11 +1009,35 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             }
         });
 
+        iv5.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view){
+                Experiment.TOTAL_PACKETS_TO_SEND += 5;
+                showToast("TOTAL_PACKETS_TO_SEND : " + Experiment.TOTAL_PACKETS_TO_SEND);
+            }
+        });
+
+        iv6.setOnClickListener(new View.OnClickListener(){
+            @Override
+            public void onClick(View view){
+                if(Experiment.sleepTime == 0){
+                    Experiment.sleepTime = 5;
+                } else if(Experiment.sleepTime == 5){
+                    Experiment.sleepTime = 80;
+                } else if(Experiment.sleepTime == 300){
+                    Experiment.sleepTime = 500;
+                } else if(Experiment.sleepTime == 500){
+                    Experiment.sleepTime = 0;
+                }
+                MainActivity.showToast("Experiment delay will set to  " + Experiment.sleepTime + " seconds");
+            }
+        });
+
 //        iv2.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=2;startWrapper(); }});
 //        iv3.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=3;startWrapper(); }});
 //        iv4.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=4;startWrapper(); }});
-        iv5.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=5;startWrapper(); }});
-        iv6.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=6;startWrapper(); }});
+//        iv5.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=5;startWrapper(); }});
+//        iv6.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=6;startWrapper(); }});
         iv7.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=7;startWrapper(); }});
         iv8.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=8;startWrapper(); }});
         iv9.setOnClickListener(new View.OnClickListener() {public void onClick(View view) { Constants.messageID=9;startWrapper(); }});
