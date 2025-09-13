@@ -24,6 +24,11 @@ public class Experiment {
 
     public static int sleepTime = 0;
 
+    public static final String EXPECTED_UNCODED_BITS = Utils.pad2(Integer.toBinaryString(EXPECTED_MESSAGE_ID));
+
+    public static long totalBitsExpected = 0;
+    public static long errorBitsCount = 0;
+
     // --- 模式定义部分 (保持不变) ---
     public enum BandwidthMode {
         ADAPTIVE, // 自适应模式
@@ -56,6 +61,38 @@ public class Experiment {
     public static int totalPackets = 0;
     public static int failedPackets = 0;
     public static List<Double> selectedBitrates = new ArrayList<>(); // 只用于自适应模式
+    /**
+     * 【【【 新增：简化的BER核心记录方法 】】】
+     * 在每次解码后，无论包是否成功，都调用此方法来累加比特统计。
+     *
+     * @param decodedBits       接收端解码后、经过FEC解码的比特串 (e.g., "01001")
+     */
+    public static void recordBitErrors(String decodedBits) {
+
+        // 1. 累加总的预期比特数
+        // 每次通信，我们都期望收到这个标准答案
+        totalBitsExpected += EXPECTED_UNCODED_BITS.length();
+        Utils.log("totalBits=" + totalBitsExpected);
+        // 2. 如果解码失败或解码出的字符串为空，则所有比特都算错
+        if (decodedBits == null || decodedBits.isEmpty()) {
+            errorBitsCount += EXPECTED_UNCODED_BITS.length();
+            return;
+        }
+
+        // 3. 比较解码结果和“标准答案”，并累加错误比特数
+        int errorsInThisPacket = 0;
+        int minLength = Math.min(EXPECTED_UNCODED_BITS.length(), decodedBits.length());
+        for (int i = 0; i < minLength; i++) {
+            if (EXPECTED_UNCODED_BITS.charAt(i) != decodedBits.charAt(i)) {
+                errorsInThisPacket++;
+            }
+        }
+        // 如果长度不匹配，缺失或多余的比特都算作错误
+        errorsInThisPacket += Math.abs(EXPECTED_UNCODED_BITS.length() - decodedBits.length());
+
+        errorBitsCount += errorsInThisPacket;
+        Utils.log("errBits=" + errorBitsCount);
+    }
 
     /**
      * 【核心记录方法】
@@ -90,6 +127,8 @@ public class Experiment {
      * 在开始新一轮实验前调用，以清空旧数据。
      */
     public static void resetStats() {
+        totalBitsExpected = 0;
+        errorBitsCount = 0;
         totalPackets = 0;
         failedPackets = 0;
         selectedBitrates.clear();
@@ -175,13 +214,19 @@ public class Experiment {
     public static void printData(){
         String filename = "expr1.txt";
         Utils.debugLog("======[" + FLAG_MSG + "_" + generateKey() +"] EXPERIMENT STATS REPORT ======",'I',filename);
-
         if (totalPackets > 0) {
+            double ber = 0;
             double per = (double) (failedPackets + (TOTAL_PACKETS_TO_SEND - totalPackets)) / TOTAL_PACKETS_TO_SEND;
             Utils.debugLog(String.format("  Total Received Packets: %d", totalPackets),'I',filename);
             Utils.debugLog(String.format("  Error Packets: %d", failedPackets),'I',filename);
             Utils.debugLog(String.format("  Lost Packets: %d", TOTAL_PACKETS_TO_SEND - totalPackets),'I',filename);
             Utils.debugLog(String.format("  Packet Error Rate (PER): %.2f%%", per * 100),'I',filename);
+            if (totalBitsExpected > 0) {
+                ber = (double) errorBitsCount / totalBitsExpected;
+                Utils.debugLog(String.format("  Total Bits Expected: %d", totalBitsExpected), 'I', filename);
+                Utils.debugLog(String.format("  Total Bit Errors: %d", errorBitsCount), 'I', filename);
+                Utils.debugLog(String.format("  Bit Error Rate (BER): %.6f", ber), 'I', filename);
+            }
             double avgBitrate = 0;
             if (!selectedBitrates.isEmpty()) {
                 avgBitrate = 0;
@@ -191,7 +236,7 @@ public class Experiment {
                 avgBitrate /= selectedBitrates.size();
                 Utils.debugLog(String.format("  Average Selected Bitrate: %.2f bps", avgBitrate),'I',filename);
             }
-            MainActivity.showToast(String.format("  Packet Error Rate (PER): %.2f%%, Average Selected Bitrate: %.2f bps", per * 100,avgBitrate));
+            MainActivity.showToast(String.format("PER: %.2f%%, Bitrate: %.2f bps, BER: %.2f%% ", per * 100,avgBitrate,ber));
         }
         MainActivity.showToast("Done");
         Utils.debugLog("=====================================",'I',filename);

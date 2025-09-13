@@ -85,6 +85,7 @@ public class Constants {
         C2_3
     }
 
+    public static double lastTxBitrate = 0.0;
     public static double XCORR_MAX_VAL_HEIGHT_FAC = .8;
     public static boolean CODING = true;
     public static int XcorrVersion = 2;
