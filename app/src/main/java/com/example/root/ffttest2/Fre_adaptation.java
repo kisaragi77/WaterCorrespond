@@ -12,6 +12,8 @@ import java.util.List;
 public class Fre_adaptation {
     public static int[] select_fre_bins(double[] SNR, double threshold) {
         int total_bins = SNR.length;
+        Utils.log("Fre_adaptation Input SNRs: " + Arrays.toString(SNR));
+        Utils.log("Fre_adaptation Threshold: " + threshold);
         int[] select_idx = new int[2];
         select_idx[0] = -1;
         select_idx[1] = -1;
@@ -23,6 +25,10 @@ public class Fre_adaptation {
             double best_valley = -1;
             for(int i = 0; i < total_bins - L + 1 ; ++i){
                 double valley = Utils.min(SNR, i, i+L) + incre;
+
+                if (L == total_bins && i == 0) { // 只在第一次打印，避免日志刷屏
+                    Utils.log(String.format("  Trying L=%d, i=%d -> incre=%.2fdB, valley=%.2fdB", L, i, incre, valley));
+                }
                 if(valley < threshold){
                     continue;
                 }

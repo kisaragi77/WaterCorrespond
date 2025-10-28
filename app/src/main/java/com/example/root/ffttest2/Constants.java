@@ -85,6 +85,13 @@ public class Constants {
         C2_3
     }
 
+    public static  int ADDR_BITS = 4;
+    public static final int ADDR_SYMBOLS = ADDR_BITS * 2;
+    public static final int ADDR_BASE_FREQ = 2000; // Hz
+    public static final int ADDR_FREQ_STEP = 300;  // Hz
+
+    public static final int ALICE_ID = 7;
+    public static final int BOB_ID = 9;
     public static double lastTxBitrate = 0.0;
     public static double XCORR_MAX_VAL_HEIGHT_FAC = .8;
     public static boolean CODING = true;
@@ -104,7 +111,7 @@ public class Constants {
     public static int XcorrAmpDiff = 10;
     public static int xcorr_method=2;
 
-    public static int FEEDBACK_SNR_THRESH = 13;
+    public static int FEEDBACK_SNR_THRESH = 5;
     public static int CheckSymSNRThresh = 5;
 //    public static int FEEDBACK_SNR_THRESH = 5;
 

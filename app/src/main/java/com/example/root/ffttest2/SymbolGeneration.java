@@ -8,7 +8,28 @@ import java.util.Arrays;
 import java.util.Random;
 
 public class SymbolGeneration {
+
+
     public static short[] generatePreamble(short[] bits, int[] valid_carrier,
+                                           int symreps, boolean addPreamble, Constants.SignalType sigType) {
+
+        // 1. 调用内部函数，生成纯净的、不含Preamble的OFDM符号串
+        short[] symbolsOnly = generateSymbols_Internal(bits, valid_carrier, symreps,false, sigType);
+
+        // 2. 根据参数决定是否拼接 Preamble
+        if (addPreamble) {
+            short[] preambleSignal = PreambleGen.preamble_s();
+            short[] gap = new short[Constants.ChirpGap];
+
+            // 使用 Utils.concat_short 进行拼接
+            short[] temp = Utils.concat_short(preambleSignal, gap);
+            return Utils.concat_short(temp, symbolsOnly);
+        } else {
+            // 如果不需要 Preamble，则直接返回纯净的符号串
+            return symbolsOnly;
+        }
+    }
+    public static short[] generateSymbols_Internal(short[] bits, int[] valid_carrier,
                                            int symreps, boolean preamble, Constants.SignalType sigType) {
         int numDataSyms = 0;
         if (valid_carrier.length > 0) {
@@ -18,9 +39,9 @@ public class SymbolGeneration {
         int symlen = (Constants.Ns+Constants.Cp)*symreps + Constants.Gi;
 
         int siglen = symlen*numDataSyms;
-        if (preamble) {
-            siglen += ((Constants.preambleTime/1000.0)*Constants.fs)+Constants.ChirpGap;
-        }
+//        if (preamble) {
+//            siglen += ((Constants.preambleTime/1000.0)*Constants.fs)+Constants.ChirpGap;
+//        }
         short[] txsig = new short[siglen];
 
         int counter = 0;

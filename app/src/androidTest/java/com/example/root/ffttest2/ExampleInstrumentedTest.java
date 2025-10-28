@@ -3,12 +3,11 @@ package com.example.root.ffttest2;
 import android.content.Context;
 import androidx.test.platform.app.InstrumentationRegistry; // 解决了 InstrumentationRegistry 无法解析的问题
 import androidx.test.ext.junit.runners.AndroidJUnit4; // 解决了 AndroidJUnit4 无法解析的问题
-//import android.support.test.InstrumentationRegistry;
+//import android.support.test.InstrumntationRegistry;
 //import android.support.test.runner.AndroidJUnit4;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
-
 import static org.junit.Assert.*;
 
 import androidx.test.ext.junit.runners.AndroidJUnit4;

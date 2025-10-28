@@ -219,7 +219,7 @@ public class SendChirpAsyncTask extends AsyncTask<Void, Void, Void> {
 //        return 0;
 //    }
 
-    public int work(int m_attempt) {
+    public int work_old(int m_attempt) {
         double[] tx_preamble = PreambleGen.preamble_d();
         if (Constants.user.equals(Constants.User.Alice)) {
             int chirpLoopNumber = 0;
@@ -246,6 +246,10 @@ public class SendChirpAsyncTask extends AsyncTask<Void, Void, Void> {
             double[] xcorr_out = Utils.xcorr_online(tx_preamble, seg);
 
             int[] valid_bins = FeedbackSignal.extractSignalHelper(feedback_signal, (int)xcorr_out[1], m_attempt);
+            if (valid_bins == null || valid_bins.length < 2 || valid_bins[0] == -1) {
+                Utils.log("!!!! [ALICE] Failed to decode band information from feedback.");
+                return 0; // 解码失败，直接结束
+            }
 
             if (Constants.SEND_DATA) {
                 appendToLog(Constants.SignalType.Data.toString());
@@ -304,6 +308,203 @@ public class SendChirpAsyncTask extends AsyncTask<Void, Void, Void> {
         return 0;
     }
 
+    // 在 SendChirpAsyncTask.java 中
+
+    public int work(int m_attempt) {
+        double[] tx_preamble = PreambleGen.preamble_d();
+
+        // ================================================================
+        // Alice 端的逻辑 (发起方)
+        // ================================================================
+        if (Constants.user.equals(Constants.User.Alice)) {
+
+            // ----------------------------------------------------------------
+            // 通信①: Alice -> Bob (发送带地址的探测包)
+            // ----------------------------------------------------------------
+            Utils.log(">>>> [ALICE] Phase 1: Encoding SOUNDING packet with header (Src: " + Constants.ALICE_ID + ", Dst: " + Constants.BOB_ID + ")");
+
+            // 1. 生成各部分信号
+            short[] preamble = PreambleGen.preamble_s();
+            short[] header = HeaderCodec.encodeHeader(Constants.ALICE_ID, Constants.BOB_ID);
+            // 【修改点】确保调用的是只生成训练符号的函数
+            short[] trainingSymbols = PreambleGen.generateTrainingSymbolsOnly();
+
+            // 2. 拼接成最终的探测包
+            short[] sounding_packet_with_header = Utils.concat_short(preamble, header);
+            sounding_packet_with_header = Utils.concat_short(sounding_packet_with_header, trainingSymbols);
+
+            // 3. 播放
+            Constants.sp1 = new AudioSpeaker(av, sounding_packet_with_header, Constants.fs, 0, 0, false);
+            appendToLog(Constants.SignalType.Sounding.toString());
+            Constants.sp1.play(Constants.volume);
+            int soundingTime = (int) ((sounding_packet_with_header.length / (double) Constants.fs) * 1000);
+            sleep(soundingTime + Constants.SendPad);
+
+            // ----------------------------------------------------------------
+            // Alice 等待 Bob 的反馈
+            // ----------------------------------------------------------------
+            Utils.log("<<<< [ALICE] Phase 2: Listening for FEEDBACK packet...");
+            double[] feedback_packet = Utils.waitForChirp(Constants.SignalType.Feedback, m_attempt, 0);
+            if (feedback_packet == null) {
+                Utils.log("<<<< [ALICE] Timeout: Did not receive FEEDBACK.");
+                return -1;
+            }
+
+            // 4. 解码收到的反馈包 Header
+            int preambleLen = PreambleGen.preamble_s().length;
+            int headerLen = Constants.ADDR_SYMBOLS * (Constants.Ns + Constants.Cp);
+
+            if (feedback_packet.length < preambleLen + headerLen) {
+                Utils.log("<<<< [ALICE] Error: Received FEEDBACK packet is too short for header.");
+                return 0;
+            }
+            double[] headerSignal = Utils.segment(feedback_packet, preambleLen, preambleLen + headerLen - 1);
+            int[] ids = HeaderCodec.decodeHeader(headerSignal);
+
+            // 5. 地址过滤
+            if (ids != null && ids[0] == Constants.BOB_ID && ids[1] == Constants.ALICE_ID) {
+                Utils.log("++++ [ALICE] FEEDBACK received and validated! From: " + ids[0] + ", For: " + ids[1]);
+            } else {
+                String reason = (ids == null) ? "header corrupted" : "wrong address (Src:" + (ids != null ? ids[0] : "?") + ", Dst:" + (ids != null ? ids[1] : "?") + ")";
+                Utils.log("<<<< [ALICE] FEEDBACK ignored (" + reason + ").");
+                return 0; // 丢弃，结束
+            }
+
+            // 6. 如果地址正确，继续解码频段信息
+            double[] xcorr_out_fb = Utils.xcorr_online(tx_preamble, Utils.segment(feedback_packet, 0, 24000-1));
+
+            // 【修改点】将 Preamble 检测到的起始点传入，让 extractSignalHelper 处理
+            int detected_start_point_fb = (int)xcorr_out_fb[1];
+            int[] valid_bins_relative = FeedbackSignal.extractSignalHelper(feedback_packet, detected_start_point_fb, m_attempt);
+
+            if (valid_bins_relative == null || valid_bins_relative.length < 2 || valid_bins_relative[0] == -1) {
+                Utils.log("!!!! [ALICE] Failed to decode band information from feedback.");
+                return 0;
+            }
+            Utils.log("++++ [ALICE] Successfully decoded band info. Relative bins: " + valid_bins_relative[0] + " to " + valid_bins_relative[valid_bins_relative.length - 1]);
+
+
+//             通信③ (数据阶段)
+            if (Constants.SEND_DATA) {
+                Utils.log(">>>> [ALICE] Phase 3: Now sending DATA to Bob.");
+                if (Constants.messageID == -1) {
+                    Utils.log("!!!! [ALICE] No message selected to send.");
+                    return 0;
+                }
+                int[] valid_bins_absolute = new int[valid_bins_relative.length];
+                for (int i = 0; i < valid_bins_relative.length; i++) {
+                    valid_bins_absolute[i] = valid_bins_relative[i] + Constants.nbin1_default;
+                }
+                sendData(valid_bins_absolute, m_attempt);
+            }
+
+            return 0;
+        }
+
+        // ================================================================
+        // Bob 端的逻辑 (接收方)
+        // ================================================================
+        else if (Constants.user.equals(Constants.User.Bob)) {
+
+            // ----------------------------------------------------------------
+            // Phase 1: Bob 等待并处理 Alice 的探测包
+            // ----------------------------------------------------------------
+            Utils.log("<<<< [BOB] Phase 1: Listening for SOUNDING packet...");
+            double[] sounding_packet_with_header = Utils.waitForChirp(Constants.SignalType.Sounding, m_attempt, 0);
+
+            if (sounding_packet_with_header == null) {
+                Utils.log("<<<< [BOB] Timeout: Did not receive SOUNDING packet.");
+                return -1;
+            }
+
+            // 1. 解码 Header
+            int preambleLen = PreambleGen.preamble_s().length;
+            int headerLen = Constants.ADDR_SYMBOLS * (Constants.Ns + Constants.Cp);
+
+            if (sounding_packet_with_header.length < preambleLen + headerLen) {
+                Utils.log("<<<< [BOB] Error: Received packet is too short for header.");
+                return 0;
+            }
+            double[] headerSignal = Utils.segment(sounding_packet_with_header, preambleLen, preambleLen + headerLen - 1);
+            int[] ids = HeaderCodec.decodeHeader(headerSignal);
+
+            int sourceId;
+            // 2. 地址过滤
+            if (ids != null && ids[1] == Constants.BOB_ID) {
+                sourceId = ids[0];
+                Utils.log("++++ [BOB] SOUNDING received and validated! From: " + sourceId + ", For: " + ids[1]);
+            } else {
+                String reason = (ids == null) ? "header corrupted" : "wrong address";
+                if (ids != null) {
+                    reason += " (Src:" + ids[0] + ", Dst:" + ids[1] + ")";
+                }
+                Utils.log("<<<< [BOB] SOUNDING ignored (" + reason + ").");
+                return 0;
+            }
+
+            // 3. 如果地址正确，进行信道估计
+            //    首先，找到 Preamble 在我们接收到的这个数据块中的确切起始位置
+            double[] xcorr_out_snd = Utils.xcorr_online(tx_preamble, Utils.segment(sounding_packet_with_header, 0, 24000-1));
+            int detected_start_point_snd = (int) xcorr_out_snd[1];
+
+            // 【【【 核心简化点 】】】
+            // 直接将完整的包 和 Preamble 的起始点 传给已修复的 ChannelEstimate 函数
+            int[] valid_bins = ChannelEstimate.extractSignal_withsymbol_helper(av, sounding_packet_with_header, detected_start_point_snd, m_attempt);
+
+            if (valid_bins != null && valid_bins.length >= 2 && valid_bins[0] != -1) {
+                Utils.log("++++ [BOB] Fre_adaptation selected bins: " + valid_bins[0] + " to " + valid_bins[valid_bins.length - 1]);
+                int f_begin_hz = Constants.f_range[0] + (valid_bins[0] * Constants.inc);
+                int f_end_hz   = Constants.f_range[0] + (valid_bins[valid_bins.length - 1] * Constants.inc);
+                Utils.log("     Corresponding to Freq Range: " + f_begin_hz + " Hz to " + f_end_hz + " Hz");
+            } else {
+                // 如果 valid_bins 是 null 或无效，这里也会打印日志
+                Utils.log("!!!! [BOB] Fre_adaptation failed to select any valid bins.");
+            }
+
+            if (valid_bins == null || valid_bins.length == 0 || valid_bins[0] == -1) {
+                Utils.log("!!!! [BOB] Channel estimation failed after receiving valid packet. Not sending feedback.");
+                return 0;
+            }
+
+            // ----------------------------------------------------------------
+            // Phase 2: Bob 发送带地址的反馈包 (这部分逻辑不变)
+            // ----------------------------------------------------------------
+            Utils.log(">>>> [BOB] Phase 2: Encoding FEEDBACK packet with header (Src: " + Constants.BOB_ID + ", Dst: " + sourceId + ")");
+
+            // 【【【 新增 HACK 代码 】】】
+//            int forced_start_bin = 20; // 对应 1000 + 20*50 = 2000 Hz
+//            int forced_end_bin   = 30; // 对应 1000 + 30*50 = 2500 Hz
+//            Utils.log("!!!! [DEBUG HACK] Overriding feedback bins! Forcing to: " + forced_start_bin + " and " + forced_end_bin);
+//
+//            // 使用我们强制指定的 bin 来生成反馈符号
+//            short[] feedback_symbol = FeedbackSignal.encodeFeedbackSymbolOnly(forced_start_bin, forced_end_bin);
+            // 【【【 HACK 结束 】】】
+
+            // 4. 生成各部分信号
+            short[] feedback_preamble = PreambleGen.preamble_s();
+            short[] feedback_header = HeaderCodec.encodeHeader(Constants.BOB_ID, sourceId);
+            //被HACK注释
+            short[] feedback_symbol = FeedbackSignal.encodeFeedbackSymbolOnly(valid_bins[0], valid_bins[valid_bins.length - 1]);
+
+            // 5. 拼接
+            short[] feedback_packet = Utils.concat_short(Utils.concat_short(feedback_preamble, feedback_header), feedback_symbol);
+
+            // 6. 播放
+            Constants.sp1 = new AudioSpeaker(av, feedback_packet, Constants.fs, 0, 0, false);
+            appendToLog(Constants.SignalType.Feedback.toString());
+            Constants.sp1.play(Constants.volume);
+
+            int stime = (int) ((feedback_packet.length / (double) Constants.fs) * 1000);
+            sleep(stime + Constants.SendPad);
+
+            Utils.log("<<<< [BOB] Handshake complete. Returning to listen mode.");
+
+            return 0;
+        }
+        return 0;
+    }
+
+    // ...
     public static void sendData(int[] valid_bins, int m_attempt) {
         send_data_per(valid_bins,m_attempt);
     }
